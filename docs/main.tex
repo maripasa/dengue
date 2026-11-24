@@ -1,0 +1,192 @@
+\documentclass{article}
+
+\usepackage[brazil]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage[a4paper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Exploração do uso de GNNs para a previsão de dengue}
+\author{Ásafe Silva e Henrique Fernandes}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdução}
+
+Este projeto propõe explorar o uso de GNNs em conjunto com modelos temporais para prever a incidência futura de dengue nos municípios do Ceará, investigando principalmente se a incorporação das relações entre municípios pode melhorar as previsões em relação a modelos que utilizam apenas informações locais.
+
+\section{Proposta}
+
+\textbf{Integrantes do grupo:} \\
+Ásafe Silva e Henrique Fernandes \\
+
+\textbf{Título provisório:} \\
+Exploração do uso de GNNs para a previsão de dengue nos municípios do Ceará \\
+
+\textbf{Modalidade escolhida:} \\
+Modalidade 1 -- Projeto com dados públicos. \\
+
+\textbf{Descrição do problema:} \\
+O projeto propõe investigar o uso de GNNs para a previsão da incidência de dengue nos municípios do Ceará. O problema será tratado como uma tarefa de previsão espaço-temporal, na qual cada município é representado como um nó de um grafo e as arestas representam algum tipo de relação entre os municípios.
+
+A hipótese a ser investigada é se informações provenientes de municípios relacionados podem melhorar a previsão da incidência futura de dengue em comparação com modelos que consideram apenas o histórico e as características individuais de cada município. Testes de ablação podem ser feitos depois para estudar o impacto de cada informação na predição.
+
+Inicialmente, essas relações poderão ser definidas a partir da adjacência geográfica ou da distância entre os municípios [Tem que ver se é possível com os dados obtidos]. Como possibilidade adicional, também será investigada a utilização de dados de transporte ou mobilidade humana para representar conexões entre municípios. Nesse caso uma aresta poderá indicar a existência ou intensidade do fluxo de pessoas entre duas regiões. Essa possibilidade é relevante porque, embora a transmissão pelo mosquito ocorra localmente, o deslocamento de pessoas infectadas pode contribuir para a circulação do vírus entre diferentes regiões.
+
+Dessa forma, diferentes representações do grafo poderão ser comparadas, por exemplo:
+
+\[
+G_{\text{adjacência}}, \qquad
+G_{\text{distância}}, \qquad
+G_{\text{transporte}}.
+\]
+
+O grafo de transporte será utilizado apenas caso sejam encontrados dados públicos com cobertura adequada, não sendo necessário para a execução do restante do projeto.
+
+Para cada município $i$ e semana $t$, será construído um vetor de características $X_{i,t}$ contendo informações como histórico de dengue, precipitação, temperatura e outras variáveis disponíveis. A tarefa principal será utilizar uma janela das semanas anteriores para prever a incidência de dengue em uma semana futura:
+
+\[
+X_{i,t-L+1}, \ldots, X_{i,t}
+\longrightarrow
+\hat{Y}_{i,t+1},
+\]
+
+onde $L$ representa o tamanho da janela temporal e $Y_{i,t+1}$ representa a incidência de dengue no município $i$ na semana seguinte. \\
+
+\textbf{Dados que serão utilizados:} \\
+Pretende-se combinar diferentes bases públicas. Os dados epidemiológicos de dengue serão obtidos a partir do SINAN/DATASUS e agregados por município e semana epidemiológica.
+
+Dados meteorológicos, como precipitação, temperatura e umidade, poderão ser obtidos a partir de bases do INMET, INPE ou FUNCEME. Informações demográficas e socioeconômicas poderão ser obtidas a partir do IBGE e IPECEDATA.
+
+Também poderão ser incorporadas variáveis relacionadas a saneamento, urbanização, uso do solo e características ambientais, dependendo da disponibilidade e qualidade dos dados. A população municipal será utilizada para permitir a construção de uma medida de incidência, como casos por 100 mil habitantes, em vez de utilizar apenas o número absoluto de casos.
+
+Para a construção do grafo, serão utilizados dados geográficos para obter informações como limites municipais, adjacência e distância entre municípios. Como possibilidade adicional, serão investigadas bases públicas de transporte ou mobilidade que permitam estimar fluxos de pessoas entre municípios do Ceará. Caso não exista uma base adequada, poderão ainda ser investigadas relações estruturais entre cidades, como as disponibilizadas pelo estudo Regiões de Influência das Cidades (REGIC) do IBGE. \\
+
+\textbf{Descrição preliminar do pipeline:} \\
+Inicialmente, os dados provenientes das diferentes fontes serão tratados e associados por município e período. Será construído um conjunto de dados espaço-temporal no qual cada município possui uma sequência de observações ao longo das semanas.
+
+Como baseline, serão avaliados modelos que não utilizam explicitamente a estrutura espacial. Isso inclui métodos simples de previsão e modelos tradicionais de aprendizado de máquina.
+
+Em seguida, será investigado um modelo temporal, como LSTM ou GRU, capaz de utilizar o histórico das últimas $L$ semanas para produzir uma representação da evolução recente de cada município:
+
+\[
+[X_{i,t-L+1},\ldots,X_{i,t}]
+\xrightarrow{\mathrm{LSTM}}
+h_i.
+\]
+
+A mesma arquitetura temporal poderá ser aplicada aos diferentes municípios, com compartilhamento dos parâmetros do modelo.
+
+Posteriormente, os vetores $h_i$ poderão ser utilizados como características dos nós de uma GNN. A GNN realizará a troca de informações entre municípios conectados no grafo:
+
+\[
+H
+\xrightarrow{\mathrm{GNN}}
+Z
+\xrightarrow{\mathrm{Regressão}}
+\hat{Y}_{t+1}.
+\]
+
+Assim, o modelo temporal procura representar a evolução recente de cada município, enquanto a GNN procura incorporar informações provenientes de outros municípios que possuam alguma relação espacial, geográfica ou de mobilidade.
+
+Também poderão ser investigadas outras formas de combinar os componentes temporal e espacial, incluindo arquiteturas nas quais a GNN é aplicada em cada instante temporal antes do processamento da sequência. \\
+
+\textbf{Modelos que serão investigados:} \\
+Serão utilizados modelos de diferentes níveis de complexidade para permitir comparações:
+
+\begin{itemize}
+    \item Baseline de persistência, utilizando a incidência recente como previsão;
+    \item Modelos tradicionais de regressão, como Random Forest ou XGBoost;
+    \item LSTM ou GRU para modelagem temporal;
+    \item Graph Convolutional Network (GCN);
+    \item Graph Attention Network (GAT);
+    \item Combinações de modelos temporais e GNNs, como LSTM + GCN ou LSTM + GAT.
+\end{itemize}
+
+Outras arquiteturas de GNN, como GraphSAGE e GIN, poderão ser investigadas caso sejam relevantes durante o desenvolvimento do projeto. A escolha final das arquiteturas dependerá da disponibilidade dos dados e dos resultados dos experimentos. \\
+
+\textbf{Protocolo de avaliação:} \\
+Como se trata de uma série temporal, a divisão entre treino, validação e teste será realizada respeitando a ordem cronológica dos dados, evitando que informações futuras sejam utilizadas para prever o passado.
+
+Os modelos serão avaliados utilizando métricas de regressão, inicialmente MAE (Mean Absolute Error), RMSE (Root Mean Squared Error) e $R^2$. Também serão utilizados baselines temporais simples para determinar se os modelos de aprendizado de máquina apresentam ganho preditivo real.
+
+Um dos principais experimentos será comparar um modelo temporal sem informação espacial com modelos que utilizam GNNs:
+
+\[
+\mathrm{LSTM}
+\quad\text{vs.}\quad
+\mathrm{LSTM + GNN}.
+\]
+
+Caso existam dados suficientes, também poderão ser comparadas diferentes construções do grafo:
+
+\[
+\mathrm{LSTM + GNN}_{\text{adjacência}},
+\]
+
+\[
+\mathrm{LSTM + GNN}_{\text{distância}},
+\]
+
+\[
+\mathrm{LSTM + GNN}_{\text{transporte}}.
+\]
+
+Também poderão ser realizados experimentos de ablação para avaliar a contribuição de diferentes grupos de variáveis, por exemplo:
+
+\[
+\text{histórico epidemiológico}
+\rightarrow
++\text{clima}
+\rightarrow
++\text{dados socioeconômicos}
+\rightarrow
++\text{informação espacial}.
+\]
+
+Dessa forma, será possível avaliar tanto a contribuição da arquitetura quanto a contribuição das diferentes fontes de dados. \\
+
+\textbf{Resultados que o grupo pretende obter ou reproduzir:} \\
+O objetivo principal é avaliar se a utilização explícita das relações entre municípios melhora a previsão da incidência de dengue. Não se assume previamente que uma GNN necessariamente apresentará resultados superiores aos modelos puramente temporais.
+
+Pretende-se comparar modelos tradicionais, modelos temporais e modelos espaço-temporais, verificando se a informação proveniente de outros municípios apresenta valor preditivo adicional.
+
+Também se pretende investigar se diferentes formas de construir o grafo produzem resultados distintos. Caso dados de transporte estejam disponíveis, será possível avaliar se relações baseadas na movimentação de pessoas apresentam maior capacidade preditiva do que relações definidas apenas por proximidade ou adjacência geográfica.
+
+Por fim, espera-se identificar quais grupos de variáveis e quais representações espaciais apresentam maior contribuição para a previsão da dengue. \\
+
+\textbf{Principais dificuldades previstas:} \\
+As principais dificuldades previstas são a integração de bases provenientes de diferentes fontes, a existência de diferentes granularidades temporais, a presença de dados ausentes e a definição adequada das relações entre os municípios no grafo.
+
+Outra dificuldade será determinar se a estrutura espacial realmente contém informação relevante para a previsão. A simples proximidade geográfica entre dois municípios não implica necessariamente uma relação epidemiológica suficientemente forte para melhorar as previsões.
+
+Também poderá ser difícil obter dados de mobilidade ou transporte com granularidade adequada entre os municípios do Ceará. Bases de transporte podem representar apenas determinados meios de deslocamento, possuir cobertura incompleta ou apresentar frequência temporal incompatível com os dados epidemiológicos. Por esse motivo, o uso desses dados será tratado como uma possibilidade adicional.
+
+Por fim, será necessário estudar as diferentes arquiteturas de GNN e determinar uma forma adequada de combiná-las com a modelagem temporal. \\
+
+\textbf{Referências e links necessários para verificar a viabilidade da proposta:} \\
+
+SINAN/DATASUS -- Dados epidemiológicos de dengue e outras arboviroses. \\
+
+IBGE -- Informações demográficas, geográficas e relações entre municípios. \\
+
+IPECEDATA -- Indicadores demográficos, sociais, econômicos e de infraestrutura dos municípios do Ceará. \\
+
+INMET, INPE e FUNCEME -- Dados meteorológicos e ambientais. \\
+
+MapBiomas -- Dados de cobertura e uso do solo. \\
+
+REGIC/IBGE -- Informações sobre relações e influência entre cidades. \\
+
+Bases públicas de transporte e mobilidade -- Possível fonte para construção de grafos baseados no fluxo de pessoas entre municípios. \\
+
+Também serão utilizados trabalhos relacionados à previsão espaço-temporal de dengue utilizando redes neurais recorrentes, GNNs e outras técnicas de aprendizado de máquina.
+
+\end{document}

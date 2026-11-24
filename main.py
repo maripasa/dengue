@@ -1,8 +1,4 @@
-from dengue import process_dengue
-
-def main():
-    dengue = process_dengue()
-    print(dengue)
+from run_grid import main as run_grid
 
 if __name__ == "__main__":
-    main()
+    run_grid()
