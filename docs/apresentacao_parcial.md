@@ -36,7 +36,8 @@ casos das últimas L semanas ─→ LSTM ─→ h por município
 
 ## Por que essa configuração
 
-O script `run_grid.py` testou o produto completo de seis escolhas:
+O grid apresentado no notebook `notebooks/lstm_gcn.py` testou o produto
+completo de seis escolhas:
 
 | Escolha | Valores testados | Pergunta |
 |---|---|---|
@@ -81,7 +82,7 @@ semanas com mais casos precisa melhorar.
 
 ## Reproduzir
 
-1. Executar `./setup.sh` para preparar a série e o grafo.
-2. Instalar as dependências de treino conforme o `README.md`.
-3. Executar `.venv-train/bin/python run_grid.py`.
-4. Ler `runs/gcn_grid_v1/summary.json` e `runs/gcn_grid_v1/leaderboard.csv`.
+1. Instalar as dependências conforme o `README.md`.
+2. Abrir `notebooks/lstm_gcn.py` com Marimo.
+3. Usar os botões do notebook para preparar os dados e executar o grid quando necessário.
+4. Ler o resumo e a classificação no próprio notebook ou em `runs/gcn_grid_v1/`.

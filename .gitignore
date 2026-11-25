@@ -1,6 +1,5 @@
 .venv/
-venv/
 __pycache__/
 data/
 runs/
-.venv-train/
+__marimo__/

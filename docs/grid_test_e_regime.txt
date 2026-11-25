@@ -1,0 +1,99 @@
+GRID TEST E REGIME DE TREINAMENTO
+
+Esta primeira versão prevê a quantidade de casos classificados como dengue
+na próxima semana, separadamente para cada um dos 184 municípios do Ceará.
+As entradas são as contagens semanais anteriores e, em parte dos testes,
+informações de calendário. A LSTM lê o histórico de cada município. A GCN
+combina os estados produzidos pela LSTM com os dos municípios vizinhos na
+malha municipal. A saída é uma previsão de uma semana à frente para todos os
+municípios ao mesmo tempo.
+
+COMO SÃO FORMADOS OS EXEMPLOS
+
+Sim: usamos janelas que se deslocam uma semana para a direita. Se o lookback
+fosse 12, o primeiro exemplo poderia usar as semanas 1 a 12 para prever a
+semana 13. O exemplo seguinte usaria as semanas 2 a 13 para prever a semana
+14, e assim por diante. No grid atual, os lookbacks testados são 4, 8 e 16
+semanas; 12 é apenas um exemplo para explicar o mecanismo.
+
+Cada janela contém a série de todos os 184 municípios. O modelo produz 184
+previsões, uma por município, para a mesma semana-alvo. As janelas podem se
+sobrepor: isso é esperado em uma previsão de uma semana à frente. Para que
+todas as configurações sejam comparadas nas mesmas semanas-alvo, começamos
+as previsões na 17ª semana da série, mesmo quando o lookback é 4 ou 8.
+
+DIVISÃO DOS DADOS
+
+A divisão é feita pela data da semana que queremos prever, em ordem
+cronológica. Não sorteamos semanas para decidir o que será treino ou teste.
+Com as 1.033 semanas disponíveis, ficam 707 semanas-alvo para treino,
+155 para validação e 155 para teste:
+
+Treino:     2007-04-29 a 2020-11-08
+Validação: 2020-11-15 a 2023-10-29
+Teste:      2023-11-05 a 2026-10-18
+
+Uma janela de validação ou teste pode conter contagens observadas em semanas
+anteriores, inclusive do período precedente. Ela nunca contém a contagem
+da própria semana-alvo nem de uma semana futura. Isso corresponde a uma
+avaliação de previsão de uma semana à frente: em cada passo, usamos as
+contagens reais que já seriam conhecidas até a semana anterior. Não é uma
+simulação de muitas semanas futuras em que o modelo precisaria alimentar
+suas próprias previsões de volta à entrada.
+
+TREINAMENTO, VALIDAÇÃO E TESTE
+
+As janelas de treino são criadas da esquerda para a direita, com deslocamento
+de uma semana. Durante cada época de treinamento, somente a ordem dessas
+janelas de treino é embaralhada. Os lotes contêm até 16 janelas; cada janela
+continua contendo todos os municípios. Assim, o embaralhamento muda a ordem
+das atualizações dos pesos, mas não muda a divisão cronológica e não coloca
+semanas de validação ou teste no treinamento.
+
+O embaralhamento não muda a ordem das semanas dentro de cada janela. A LSTM
+sempre lê uma janela do passado para o presente. Nosso código não passa o
+estado oculto de uma janela para a próxima: cada chamada começa com estados
+iniciais zerados, enquanto os pesos aprendidos são compartilhados. Portanto,
+treinar a janela seguinte não obriga a LSTM a continuar presa ao estado da
+janela anterior.
+
+Há, porém, um limite real: janelas consecutivas compartilham quase todas as
+semanas e são exemplos muito parecidos. Ter 707 semanas-alvo de treino não
+equivale a ter 707 exemplos independentes. Além disso, períodos longos com
+poucos casos podem dominar a otimização. A validação e o teste em períodos
+posteriores ajudam a revelar se o modelo aprendeu algo que se mantém no
+tempo, mas um único recorte cronológico não garante que ele funcionará em
+todas as epidemias ou em mudanças no padrão dos dados.
+
+O modelo é treinado com AdamW e perda Smooth L1, por no máximo 20 épocas.
+Após cada época, medimos o MAE em todas as janelas de validação, sem atualizar
+os pesos. Guardamos o estado com o menor MAE de validação e paramos quando
+passam 5 épocas sem melhora. Para cada configuração, o grid registra esse
+melhor resultado de validação. Depois de completar o grid, selecionamos a
+configuração com menor MAE de validação e avaliamos seu estado salvo no
+período de teste. O teste não participa da escolha dos hiperparâmetros.
+
+VARIAÇÕES DO GRID
+
+O grid testa o produto completo destas escolhas:
+
+- Lookback: 4, 8 ou 16 semanas.
+- Tamanho do estado oculto da LSTM: 16 ou 32.
+- Número de camadas LSTM: 1 ou 2.
+- Número de camadas GCN: 1, 2 ou 4.
+- Calendário: nenhum; seno/cosseno da semana do ano; ou seno/cosseno da
+  semana do ano e do mês.
+- Taxa de aprendizado: 0,001 ou 0,0003.
+
+São 3 x 2 x 2 x 3 x 3 x 2 = 216 configurações. As contagens de casos não
+são escaladas. A divisão temporal, a função de perda, o tamanho do lote e
+as regras de parada são iguais em todas as configurações.
+
+RESULTADO
+
+A configuração selecionada usa lookback de 4 semanas, estado oculto de 32,
+2 camadas LSTM, 1 camada GCN, seno/cosseno da semana do ano e taxa de
+aprendizado de 0,001. O MAE no teste foi 0,625 caso por município-semana.
+Nas observações com pelo menos 1 caso, o MAE foi 2,545; nas observações
+com pelo menos 10 casos, foi 10,452. Como 79,5% das observações do teste
+têm zero casos, o MAE geral deve ser lido junto com essas duas métricas.
